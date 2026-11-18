@@ -1,82 +1,91 @@
-# Crop Yield Estimator for Precision Agriculture
+# Crop Yield Estimator (real FAO data)
 
-A machine learning pipeline that estimates field-level crop yield (tonnes/hectare) from soil tests,
-seasonal weather, satellite vegetation index (peak NDVI) and management inputs. Useful for harvest
-planning, input optimisation (fertiliser/irrigation) and early-season production forecasts.
+A machine learning project that estimates crop yield (tonnes/hectare) from the country, crop, year,
+rainfall, pesticide use and temperature. It is trained on **real, public data**: FAOSTAT crop yields combined
+with World Bank rainfall and temperature records (101 countries, 10 crops, 1990-2013).
 
 ## Project layout
 
 ```
 crop_yield_estimator/
+├── app.py                  # interactive Streamlit demo
 ├── requirements.txt
+├── data/
+│   ├── raw/yield_df.csv    # original downloaded file
+│   └── crop_yield.csv      # cleaned data (13,130 rows), made by prepare_data.py
 ├── src/
-│   ├── generate_data.py   # synthetic dataset generator (agronomy-based)
-│   ├── train.py           # preprocessing, model comparison, evaluation, plots, saves best model
-│   └── predict.py         # CLI for single-field or batch prediction
-├── data/crop_yield.csv    # created by generate_data.py
-└── models/                # yield_model.joblib, metrics.json, plots
+│   ├── prepare_data.py     # cleaning (duplicates + leakage fix)
+│   ├── train.py            # model comparison, evaluation, plots, saves best model
+│   └── predict.py          # command-line predictions
+└── models/                 # yield_model.joblib, metrics.json, plots
 ```
 
 ## Quick start
 
 ```bash
 pip install -r requirements.txt
-python src/generate_data.py --n 6000          # -> data/crop_yield.csv
-python src/train.py                           # -> models/
-python src/predict.py --crop wheat --soil_type loam --avg_temp_c 19 --rainfall_mm 320 \
-    --soil_n_kg_ha 60 --fertilizer_n_kg_ha 120 --irrigations 4 --ndvi_peak 0.78 --area_ha 5
+python src/prepare_data.py        # raw -> data/crop_yield.csv
+python src/train.py               # -> models/
+streamlit run app.py              # interactive demo
+python src/predict.py --country India --crop Wheat --year 2013
 ```
 
-## Live demo (for presentation)
+## Data
 
-```bash
-pip install -r requirements.txt
-streamlit run app.py
-```
+| Column | Meaning | Source |
+|--------|---------|--------|
+| `country`, `crop`, `year` | Record identifier | FAOSTAT |
+| `yield_t_ha` | Recorded yield in tonnes/hectare (**target**) | FAOSTAT |
+| `rainfall_mm` | Average annual rainfall of the country (one long-term value per country) | World Bank |
+| `pesticides_tonnes` | Total pesticides used in the country that year | FAOSTAT |
+| `avg_temp_c` | Average temperature of the country that year | World Bank |
 
-Opens in the browser at http://localhost:8501 with four tabs: **Predict yield** (sidebar sliders for
-crop, soil, weather, NDVI and management, instant estimate and total production), **What-if analysis**
-(vary fertiliser, irrigation, rainfall, temperature, pH or NDVI and see the yield response),
-**Model performance** (metrics, actual-vs-predicted, feature importance) and **Dataset**.
+Compiled on Kaggle as the *Crop Yield Prediction Dataset* (user "patelris"). FAOSTAT data are public; please
+cite FAOSTAT and the World Bank Climate Change Knowledge Portal when you use them.
 
-## Features
-
-| Group | Columns |
-|-------|---------|
-| Crop / soil | `crop`, `soil_type`, `soil_ph`, `organic_carbon_pct`, `soil_n/p/k_kg_ha` |
-| Weather | `avg_temp_c`, `rainfall_mm`, `humidity_pct`, `solar_rad_mj`, `heat_stress_days` |
-| Remote sensing | `ndvi_peak` |
-| Management | `fertilizer_n_kg_ha`, `irrigations`, `seed_rate_rel` |
-| Engineered | `total_water_mm`, `total_n_kg_ha`, `temp_x_water`, `ph_dev` |
-
-Target: `yield_t_ha`.
+**Cleaning (`prepare_data.py`)**
+- 2,310 exact duplicate rows removed.
+- Temperature had been joined one-to-many, so the same country-crop-year appeared many times with the same
+  yield but different temperatures. Keeping those would put near-copies in both train and test sets and
+  inflate the scores (data leakage). They are averaged into one row per country-crop-year (28,242 raw rows
+  become 13,130 clean rows).
 
 ## Method
 
-1. **Preprocessing** – median imputation + scaling for numeric, mode imputation + one-hot for categorical
-   (handles the missing sensor/lab values the generator injects).
-2. **Models compared** – Ridge (baseline), Random Forest, Gradient Boosting, selected by 5-fold CV R².
-3. **Evaluation** – held-out 20% test set (stratified by crop): R², MAE, RMSE, MAPE, plus per-crop breakdown.
-4. **Interpretability** – permutation importance on the original features.
+- **Features:** country, crop, year, rainfall, pesticides, temperature, plus `log(pesticides)` and
+  `temperature × rainfall`.
+- **Target:** modelled on a log scale because yields are very skewed (potatoes ~18 t/ha, sorghum ~1.4 t/ha).
+- **Models:** Ridge (linear baseline), Random Forest, Histogram Gradient Boosting, compared with a naive
+  baseline that predicts each country-crop's historical average.
+- **Time-based evaluation** (predicting future seasons, as in real use):
+  train 1990-2003, choose the model on 2004-2008, final score on 2009-2013. The deployed model is fit on
+  1990-2008, so 2009-2013 are genuinely unseen.
+- **Stricter test:** 5-fold cross-validation grouped by country (predicting countries never seen).
 
-## Using real data
+## Results (test years 2009-2013)
 
-Provide a CSV with the same columns (see `generate_data.py`) at `data/crop_yield.csv`. Typical real sources:
-Sentinel-2 / Landsat NDVI (Google Earth Engine), NASA POWER or IMD weather, soil health card data, and
-farmer-reported or crop-cutting-experiment yields. For real deployments:
+| Model | R² | MAE (t/ha) | WAPE |
+|-------|----|-----------|------|
+| Baseline (country-crop mean) | 0.864 | 1.74 | 21.4% |
+| Ridge | 0.761 | 2.54 | 31.3% |
+| Histogram Gradient Boosting | 0.901 | 1.49 | 18.4% |
+| **Random Forest (best)** | **0.915** | **1.30** | **16.1%** |
 
-- Use **grouped or spatial CV** (e.g. by district/farm) to avoid leakage between neighbouring fields.
-- Use **time-based splits** (train on earlier seasons, test on the latest) to measure forecast skill.
-- For in-season forecasts, use only features available at forecast time (e.g. NDVI up to that date).
+For countries never seen in training the Random Forest scores R² 0.62 and MAE 2.8 t/ha.
+Run `python src/train.py` to reproduce; exact numbers are saved in `models/metrics.json`.
 
-## Caveats
+## Honest limitations
 
-The bundled dataset is **synthetic**, so reported scores show the pipeline works, not real-world
-accuracy. Expect lower scores on real data, where yield noise, pests, and management variation are larger.
+- **National-level, not field-level.** There is no soil, satellite NDVI or farm-management data, so this is a
+  country-scale yield estimator, not a precision-agriculture model for individual fields.
+- Most of the accuracy comes from knowing the country and crop; the weather and pesticide features add a
+  smaller improvement over the baseline. The model learns **associations, not causes**.
+- Rainfall is one fixed value per country, so the model cannot learn year-to-year rainfall effects.
+- Data stop at 2013.
 
 ## Ideas for extension
 
-- Time-series NDVI (multi-date) with a GRU/LSTM or gradient boosting on summary statistics
-- Quantile regression / conformal prediction for yield uncertainty intervals
-- Hyperparameter search (Optuna) and SHAP explanations
-- Streamlit or FastAPI front-end for farmers and extension workers
+- Add field-level data (soil tests, Sentinel-2 NDVI via Google Earth Engine, IMD weather) for true
+  precision agriculture
+- Add Indian state/district yield data (Ministry of Agriculture statistics) for local relevance
+- Prediction intervals (quantile regression or conformal prediction) and SHAP explanations
