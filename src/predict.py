@@ -1,10 +1,12 @@
-"""Predict crop yield (t/ha) from the command line.
+"""Predict crop yield for a single field (CLI) or a CSV of fields.
 
-Single prediction (weather/pesticide values default to that country's latest recorded values):
-  python src/predict.py --country India --crop Wheat --year 2013
-  python src/predict.py --country India --crop Rice --year 2013 --avg_temp_c 27 --pesticides_tonnes 50000
+Single field:
+  python src/predict.py --crop wheat --soil_type loam --avg_temp_c 19 --rainfall_mm 320 \
+      --humidity_pct 55 --solar_rad_mj 19 --heat_stress_days 2 --soil_n_kg_ha 60 \
+      --soil_p_kg_ha 24 --soil_k_kg_ha 190 --soil_ph 7.1 --organic_carbon_pct 0.7 \
+      --fertilizer_n_kg_ha 120 --irrigations 4 --seed_rate_rel 1.0 --ndvi_peak 0.78
 
-Batch (CSV needs columns: country, crop, year, rainfall_mm, pesticides_tonnes, avg_temp_c):
+Batch:
   python src/predict.py --csv fields.csv --out predictions.csv
 """
 from __future__ import annotations
@@ -16,28 +18,32 @@ from pathlib import Path
 import joblib
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).parent))
 from train import add_features  # noqa: E402
 
+FIELDS = {
+    "avg_temp_c": 22.0, "rainfall_mm": 400.0, "humidity_pct": 58.0, "solar_rad_mj": 19.0,
+    "heat_stress_days": 2, "soil_n_kg_ha": 55.0, "soil_p_kg_ha": 22.0, "soil_k_kg_ha": 180.0,
+    "soil_ph": 7.0, "organic_carbon_pct": 0.65, "fertilizer_n_kg_ha": 100.0, "irrigations": 3,
+    "seed_rate_rel": 1.0, "ndvi_peak": 0.7,
+}
+
 
 def predict_df(model, df: pd.DataFrame) -> pd.Series:
-    df = df.drop(columns=["yield_t_ha"], errors="ignore")
+    df = df.drop(columns=["area_ha", "yield_t_ha"], errors="ignore")
     return pd.Series(model.predict(add_features(df)), index=df.index, name="predicted_yield_t_ha").round(3)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", default=str(ROOT / "models" / "yield_model.joblib"))
-    ap.add_argument("--data", default=str(ROOT / "data" / "crop_yield.csv"))
+    ap.add_argument("--model", default="models/yield_model.joblib")
     ap.add_argument("--csv")
     ap.add_argument("--out", default="predictions.csv")
-    ap.add_argument("--country")
-    ap.add_argument("--crop")
-    ap.add_argument("--year", type=int, default=2013)
-    ap.add_argument("--rainfall_mm", type=float)
-    ap.add_argument("--pesticides_tonnes", type=float)
-    ap.add_argument("--avg_temp_c", type=float)
+    ap.add_argument("--crop", choices=["wheat", "rice", "maize", "cotton", "mustard"])
+    ap.add_argument("--soil_type", choices=["sandy", "loam", "clay", "silt"], default="loam")
+    for k, v in FIELDS.items():
+        ap.add_argument(f"--{k}", type=float, default=v)
+    ap.add_argument("--area_ha", type=float, default=1.0, help="Used only to report total production")
     a = ap.parse_args()
 
     model = joblib.load(a.model)
@@ -49,26 +55,11 @@ def main() -> None:
         print(f"Wrote {len(df)} predictions to {a.out}")
         return
 
-    if not (a.country and a.crop):
-        ap.error("--country and --crop are required (or pass --csv)")
-
-    hist = pd.read_csv(a.data)
-    sub = hist[hist.country == a.country]
-    if sub.empty:
-        ap.error(f"Unknown country '{a.country}'. Examples: {', '.join(sorted(hist.country.unique())[:8])} ...")
-    latest = sub.sort_values("year").iloc[-1]
-    row = {
-        "country": a.country, "crop": a.crop, "year": a.year,
-        "rainfall_mm": a.rainfall_mm if a.rainfall_mm is not None else latest.rainfall_mm,
-        "pesticides_tonnes": a.pesticides_tonnes if a.pesticides_tonnes is not None else latest.pesticides_tonnes,
-        "avg_temp_c": a.avg_temp_c if a.avg_temp_c is not None else latest.avg_temp_c,
-    }
+    if not a.crop:
+        ap.error("--crop is required for single-field prediction (or pass --csv)")
+    row = {"crop": a.crop, "soil_type": a.soil_type, **{k: getattr(a, k) for k in FIELDS}}
     pred = float(predict_df(model, pd.DataFrame([row])).iloc[0])
-    print(f"Inputs: {row}")
-    print(f"Estimated yield: {pred:.2f} t/ha")
-    actual = hist[(hist.country == a.country) & (hist.crop == a.crop) & (hist.year == a.year)]
-    if len(actual):
-        print(f"Recorded FAO yield for {a.year}: {actual.yield_t_ha.iloc[0]:.2f} t/ha")
+    print(f"Estimated yield: {pred:.2f} t/ha  ({pred * a.area_ha:.2f} t over {a.area_ha} ha)")
 
 
 if __name__ == "__main__":
