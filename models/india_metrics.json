@@ -1,0 +1,160 @@
+{
+  "best_model": "ridge",
+  "cleaning": {
+    "raw_rows": 19689,
+    "removed_coconut_nuts": 172,
+    "removed_zero_yield": 105,
+    "removed_area_under_10ha": 454,
+    "removed_extreme_outliers": 125,
+    "clean_rows": 18833,
+    "duplicate_state_crop_season_year": 0
+  },
+  "split": {
+    "train": "1997-2009",
+    "validation": "2010-2013",
+    "test": "2014-2020",
+    "deployed_model_fit_on": "1997-2013"
+  },
+  "validation_metrics": {
+    "baseline_state_crop_season_mean": {
+      "R2": 0.913040231161918,
+      "MAE": 0.9255110751944308,
+      "RMSE": 3.433217983234467,
+      "WAPE_%": 21.93580836314944
+    },
+    "ridge": {
+      "R2": 0.9025115237368464,
+      "MAE": 0.9961189208179356,
+      "RMSE": 3.6351206660002866,
+      "WAPE_%": 23.609305538973796
+    },
+    "random_forest": {
+      "R2": 0.9012799540679391,
+      "MAE": 0.9528151782835508,
+      "RMSE": 3.6580098011044933,
+      "WAPE_%": 22.582950886824577
+    },
+    "hist_gradient_boosting": {
+      "R2": 0.8992542477217655,
+      "MAE": 0.9445182677314929,
+      "RMSE": 3.6953498653475467,
+      "WAPE_%": 22.386303386050045
+    }
+  },
+  "test_metrics": {
+    "baseline_state_crop_season_mean": {
+      "R2": 0.9125660283312617,
+      "MAE": 1.0643384946666998,
+      "RMSE": 3.5391499524224503,
+      "WAPE_%": 23.560892984043964
+    },
+    "ridge": {
+      "R2": 0.9204199876181536,
+      "MAE": 1.0364211198345104,
+      "RMSE": 3.3764541901088547,
+      "WAPE_%": 22.94289571709118
+    },
+    "random_forest": {
+      "R2": 0.9173252628799474,
+      "MAE": 1.0040790456781061,
+      "RMSE": 3.4414801739572556,
+      "WAPE_%": 22.226950412191094
+    },
+    "hist_gradient_boosting": {
+      "R2": 0.9166206814928949,
+      "MAE": 1.030032108185542,
+      "RMSE": 3.456113776759555,
+      "WAPE_%": 22.801464376883672
+    }
+  },
+  "unseen_state_check": {
+    "R2": 0.665671922345163,
+    "MAE": 2.10149132301697,
+    "RMSE": 6.60434963686369,
+    "WAPE_%": 50.20218112057202
+  },
+  "per_crop": [
+    {
+      "crop": "Arhar/Tur",
+      "n": 158.0,
+      "R2": 0.47,
+      "MAE": 0.201,
+      "mean_yield": 0.939
+    },
+    {
+      "crop": "Groundnut",
+      "n": 224.0,
+      "R2": 0.648,
+      "MAE": 0.299,
+      "mean_yield": 1.639
+    },
+    {
+      "crop": "Maize",
+      "n": 303.0,
+      "R2": 0.542,
+      "MAE": 0.584,
+      "mean_yield": 2.803
+    },
+    {
+      "crop": "Moong(Green Gram)",
+      "n": 230.0,
+      "R2": 0.19,
+      "MAE": 0.167,
+      "mean_yield": 0.614
+    },
+    {
+      "crop": "Potato",
+      "n": 207.0,
+      "R2": 0.679,
+      "MAE": 2.966,
+      "mean_yield": 12.511
+    },
+    {
+      "crop": "Rapeseed &Mustard",
+      "n": 154.0,
+      "R2": 0.658,
+      "MAE": 0.184,
+      "mean_yield": 0.852
+    },
+    {
+      "crop": "Rice",
+      "n": 361.0,
+      "R2": 0.525,
+      "MAE": 0.352,
+      "mean_yield": 2.499
+    },
+    {
+      "crop": "Sesamum",
+      "n": 211.0,
+      "R2": 0.344,
+      "MAE": 0.16,
+      "mean_yield": 0.509
+    },
+    {
+      "crop": "Sugarcane",
+      "n": 161.0,
+      "R2": 0.835,
+      "MAE": 9.049,
+      "mean_yield": 57.388
+    },
+    {
+      "crop": "Urad",
+      "n": 243.0,
+      "R2": 0.209,
+      "MAE": 0.179,
+      "mean_yield": 0.686
+    }
+  ],
+  "top_features": {
+    "crop": 1.5735,
+    "state": 0.3938,
+    "season": 0.1272,
+    "year": 0.0014,
+    "log_area": 0.0009,
+    "pest_kg_ha": 0.0006,
+    "log_pest": 0.0001,
+    "area_ha": -0.0,
+    "rainfall_mm": -0.0001,
+    "fert_kg_ha": -0.0001
+  }
+}

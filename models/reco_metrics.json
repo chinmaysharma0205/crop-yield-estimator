@@ -1,0 +1,78 @@
+{
+  "best_model": "naive_bayes",
+  "models": {
+    "logistic_regression": {
+      "CV_accuracy": 0.9681818181818181,
+      "test_accuracy": 0.9727272727272728,
+      "test_macro_F1": 0.9724640256149183
+    },
+    "knn": {
+      "CV_accuracy": 0.965340909090909,
+      "test_accuracy": 0.9795454545454545,
+      "test_macro_F1": 0.9792832328133997
+    },
+    "naive_bayes": {
+      "CV_accuracy": 0.9948863636363636,
+      "test_accuracy": 0.9954545454545455,
+      "test_macro_F1": 0.9954431533378901
+    },
+    "random_forest": {
+      "CV_accuracy": 0.99375,
+      "test_accuracy": 0.9931818181818182,
+      "test_macro_F1": 0.9931775541531639
+    }
+  },
+  "per_class_f1": {
+    "apple": 1.0,
+    "banana": 1.0,
+    "blackgram": 1.0,
+    "chickpea": 1.0,
+    "coconut": 1.0,
+    "coffee": 1.0,
+    "cotton": 1.0,
+    "grapes": 1.0,
+    "jute": 0.952,
+    "kidneybeans": 1.0,
+    "lentil": 1.0,
+    "maize": 1.0,
+    "mango": 1.0,
+    "mothbeans": 1.0,
+    "mungbean": 1.0,
+    "muskmelon": 1.0,
+    "orange": 1.0,
+    "papaya": 1.0,
+    "pigeonpeas": 1.0,
+    "pomegranate": 1.0,
+    "rice": 0.947,
+    "watermelon": 1.0
+  },
+  "most_confused_pairs": [
+    {
+      "true": "rice",
+      "predicted": "jute",
+      "count": 2
+    }
+  ],
+  "accuracy_with_noisy_inputs": {
+    "0.0": 0.9954545454545455,
+    "0.1": 0.9818181818181818,
+    "0.25": 0.8159090909090909,
+    "0.5": 0.5
+  },
+  "feature_importance": {
+    "humidity": 0.4559,
+    "K": 0.4336,
+    "rainfall": 0.3468,
+    "P": 0.1709,
+    "N": 0.1509,
+    "temperature": 0.0855,
+    "ph": 0.0514
+  },
+  "data_notes": {
+    "rows": 2200,
+    "crops": 22,
+    "rows_per_crop": [
+      100
+    ]
+  }
+}
